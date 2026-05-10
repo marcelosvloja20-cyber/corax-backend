@@ -1,322 +1,440 @@
-/* ===================================
-   CORΛX BACKEND API
-=================================== */
+// =========================================
+// CORΛX SERVER.JS
+// Real Backend API
+// =========================================
 
-const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const cors = require("cors");
+// =========================================
+// IMPORTS
+// =========================================
 
-const app = express();
+const express =
+    require("express");
 
-app.use(express.json());
+const sqlite3 =
+    require("sqlite3").verbose();
+
+const bcrypt =
+    require("bcrypt");
+
+const jwt =
+    require("jsonwebtoken");
+
+const cors =
+    require("cors");
+
+require("dotenv").config();
+
+// =========================================
+// APP
+// =========================================
+
+const app =
+    express();
+
+const PORT =
+    process.env.PORT || 3000;
+
+// =========================================
+// MIDDLEWARE
+// =========================================
+
 app.use(cors());
 
-const SECRET = "corax-secret-key";
+app.use(express.json());
 
-/* ===================================
-   DATABASE
-=================================== */
+// =========================================
+// DATABASE
+// =========================================
 
-const db = new sqlite3.Database("./corax.db");
+const db =
+    new sqlite3.Database(
 
-db.serialize(() => {
+        "./corax.db",
+
+        err => {
+
+            if(err){
+
+                console.log(err);
+
+            } else {
+
+                console.log(
+                    "CORΛX Database Connected 💾"
+                );
+
+            }
+
+        }
+
+    );
+
+// =========================================
+// CREATE TABLE
+// =========================================
 
 db.run(`
-CREATE TABLE IF NOT EXISTS users (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-email TEXT UNIQUE,
-password TEXT,
-balance REAL DEFAULT 100
-)
+
+    CREATE TABLE IF NOT EXISTS users (
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        email TEXT UNIQUE,
+
+        password TEXT
+
+    )
+
 `);
 
-db.run(`
-CREATE TABLE IF NOT EXISTS transactions (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-user_id INTEGER,
-type TEXT,
-amount REAL,
-to_user TEXT,
-date TEXT
-)
-`);
+// =========================================
+// ROOT
+// =========================================
+
+app.get("/", (req,res) => {
+
+    res.json({
+
+        status:"online",
+
+        project:"CORΛX",
+
+        message:
+        "Money Without Borders"
+
+    });
 
 });
 
-/* ===================================
-   ROOT
-=================================== */
+// =========================================
+// REGISTER
+// =========================================
 
-app.get("/", (req,res)=>{
-res.send("CORΛX Backend Online 🚀");
+app.post("/register", async (req,res) => {
+
+    try{
+
+        const {
+
+            email,
+            password
+
+        } = req.body;
+
+        // ================================
+        // VALIDATION
+        // ================================
+
+        if(
+
+            !email
+            ||
+            !password
+
+        ){
+
+            return res.status(400).json({
+
+                success:false,
+
+                message:
+                "Missing fields"
+
+            });
+
+        }
+
+        // ================================
+        // HASH
+        // ================================
+
+        const hashedPassword =
+            await bcrypt.hash(
+                password,
+                10
+            );
+
+        // ================================
+        // INSERT
+        // ================================
+
+        db.run(
+
+            `
+
+            INSERT INTO users
+            (email,password)
+
+            VALUES (?,?)
+
+            `,
+
+            [
+
+                email,
+                hashedPassword
+
+            ],
+
+            function(err){
+
+                if(err){
+
+                    return res.status(400).json({
+
+                        success:false,
+
+                        message:
+                        "User already exists"
+
+                    });
+
+                }
+
+                return res.json({
+
+                    success:true,
+
+                    message:
+                    "Account created"
+
+                });
+
+            }
+
+        );
+
+    } catch(error){
+
+        console.log(error);
+
+        return res.status(500).json({
+
+            success:false,
+
+            message:
+            "Internal server error"
+
+        });
+
+    }
+
 });
 
-/* ===================================
-   REGISTER
-=================================== */
+// =========================================
+// LOGIN
+// =========================================
 
-app.post("/register", async (req,res)=>{
+app.post("/login", (req,res) => {
 
-const { email, password } = req.body;
+    const {
 
-if(!email || !password){
-return res.status(400).json({
-error:"Missing fields"
+        email,
+        password
+
+    } = req.body;
+
+    db.get(
+
+        `
+
+        SELECT *
+        FROM users
+
+        WHERE email = ?
+
+        `,
+
+        [email],
+
+        async (err,user) => {
+
+            if(err){
+
+                return res.status(500).json({
+
+                    message:
+                    "Database error"
+
+                });
+
+            }
+
+            if(!user){
+
+                return res.status(404).json({
+
+                    message:
+                    "User not found"
+
+                });
+
+            }
+
+            // ============================
+            // PASSWORD
+            // ============================
+
+            const validPassword =
+                await bcrypt.compare(
+
+                    password,
+                    user.password
+
+                );
+
+            if(!validPassword){
+
+                return res.status(401).json({
+
+                    message:
+                    "Invalid password"
+
+                });
+
+            }
+
+            // ============================
+            // TOKEN
+            // ============================
+
+            const token =
+                jwt.sign(
+
+                    {
+
+                        id:user.id,
+                        email:user.email
+
+                    },
+
+                    process.env.JWT_SECRET
+                    ||
+                    "corax_secret_key",
+
+                    {
+
+                        expiresIn:"7d"
+
+                    }
+
+                );
+
+            // ============================
+            // RESPONSE
+            // ============================
+
+            return res.json({
+
+                success:true,
+
+                token,
+
+                email:user.email
+
+            });
+
+        }
+
+    );
+
 });
-}
 
-try{
+// =========================================
+// PROTECTED ROUTE
+// =========================================
 
-const hash = await bcrypt.hash(password, 10);
+app.get(
 
-db.run(
-"INSERT INTO users (email,password) VALUES (?,?)",
-[email, hash],
-function(err){
+    "/profile",
 
-if(err){
-return res.status(400).json({
-error:"User already exists"
-});
-}
+    authenticateToken,
 
-res.json({
-message:"User created successfully"
-});
+    (req,res) => {
 
-}
+        res.json({
+
+            success:true,
+
+            user:req.user
+
+        });
+
+    }
+
 );
 
-}catch(err){
+// =========================================
+// AUTH MIDDLEWARE
+// =========================================
 
-res.status(500).json({
-error:"Server error"
-});
+function authenticateToken(
 
-}
+    req,
+    res,
+    next
 
-});
+){
 
-/* ===================================
-   LOGIN
-=================================== */
+    const authHeader =
+        req.headers["authorization"];
 
-app.post("/login", (req,res)=>{
+    const token =
+        authHeader &&
+        authHeader.split(" ")[1];
 
-const { email, password } = req.body;
+    if(!token){
 
-db.get(
-"SELECT * FROM users WHERE email=?",
-[email],
-async (err,user)=>{
+        return res.status(401).json({
 
-if(err || !user){
-return res.status(401).json({
-error:"Invalid credentials"
-});
-}
+            message:
+            "Access denied"
 
-const valid = await bcrypt.compare(
-password,
-user.password
-);
+        });
 
-if(!valid){
-return res.status(401).json({
-error:"Invalid credentials"
-});
-}
+    }
 
-const token = jwt.sign(
-{
-id:user.id,
-email:user.email
-},
-SECRET,
-{
-expiresIn:"7d"
-}
-);
+    jwt.verify(
 
-res.json({
-token,
-email:user.email,
-balance:user.balance
-});
+        token,
 
-}
-);
+        process.env.JWT_SECRET
+        ||
+        "corax_secret_key",
 
-});
+        (err,user) => {
 
-/* ===================================
-   AUTH MIDDLEWARE
-=================================== */
+            if(err){
 
-function auth(req,res,next){
+                return res.status(403).json({
 
-const token = req.headers.authorization;
+                    message:
+                    "Invalid token"
 
-if(!token){
-return res.status(403).json({
-error:"Access denied"
-});
-}
+                });
 
-try{
+            }
 
-const verified = jwt.verify(token, SECRET);
+            req.user = user;
 
-req.user = verified;
+            next();
 
-next();
+        }
 
-}catch(err){
-
-return res.status(403).json({
-error:"Invalid token"
-});
+    );
 
 }
 
-}
+// =========================================
+// START SERVER
+// =========================================
 
-/* ===================================
-   BALANCE
-=================================== */
+app.listen(PORT, () => {
 
-app.get("/balance", auth, (req,res)=>{
+    console.log(
 
-db.get(
-"SELECT balance FROM users WHERE id=?",
-[req.user.id],
-(err,row)=>{
+        `CORΛX API Running On Port ${PORT} 🚀`
 
-if(err || !row){
-return res.status(404).json({
-error:"User not found"
-});
-}
-
-res.json({
-balance: row.balance
-});
-
-}
-);
-
-});
-
-/* ===================================
-   SEND PAYMENT
-=================================== */
-
-app.post("/send", auth, (req,res)=>{
-
-const { to, amount } = req.body;
-
-if(!to || !amount){
-return res.status(400).json({
-error:"Missing fields"
-});
-}
-
-db.get(
-"SELECT * FROM users WHERE id=?",
-[req.user.id],
-(err,user)=>{
-
-if(err || !user){
-return res.status(404).json({
-error:"User not found"
-});
-}
-
-if(user.balance < amount){
-
-return res.status(400).json({
-error:"Insufficient balance"
-});
-
-}
-
-const newBalance = user.balance - amount;
-
-/* UPDATE BALANCE */
-
-db.run(
-"UPDATE users SET balance=? WHERE id=?",
-[newBalance, req.user.id]
-);
-
-/* SAVE TRANSACTION */
-
-db.run(
-`
-INSERT INTO transactions
-(user_id,type,amount,to_user,date)
-VALUES (?,?,?,?,?)
-`,
-[
-req.user.id,
-"Sent",
-amount,
-to,
-new Date().toLocaleString()
-]
-);
-
-res.json({
-message:"Payment sent",
-balance:newBalance
-});
-
-}
-);
-
-});
-
-/* ===================================
-   HISTORY
-=================================== */
-
-app.get("/history", auth, (req,res)=>{
-
-db.all(
-`
-SELECT *
-FROM transactions
-WHERE user_id=?
-ORDER BY id DESC
-`,
-[req.user.id],
-(err,rows)=>{
-
-if(err){
-return res.status(500).json({
-error:"Server error"
-});
-}
-
-res.json(rows);
-
-}
-);
-
-});
-
-/* ===================================
-   SERVER
-=================================== */
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, ()=>{
-
-console.log(
-"CORΛX backend running on port " + PORT
-);
+    );
 
 });
