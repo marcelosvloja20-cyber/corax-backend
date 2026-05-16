@@ -1,41 +1,44 @@
 // =========================================
-// CORΛX SERVER.JS
-// Real Backend API
+// CORΛX MAIN SERVER
+// Backend Infrastructure
 // =========================================
-
-// =========================================
-// IMPORTS
-// =========================================
-
-const express =
-    require("express");
-
-const sqlite3 =
-    require("sqlite3").verbose();
-
-const bcrypt =
-    require("bcrypt");
-
-const jwt =
-    require("jsonwebtoken");
-
-const cors =
-    require("cors");
 
 require("dotenv").config();
 
-// =========================================
-// APP
-// =========================================
+const express = require("express");
 
-const app =
-    express();
+const cors = require("cors");
 
-const PORT =
-    process.env.PORT || 3000;
+const connectDatabase =
+    require("./database");
 
 // =========================================
-// MIDDLEWARE
+// ROUTES
+// =========================================
+
+const authRoutes =
+    require("./authRoutes");
+
+const walletRoutes =
+    require("./walletRoutes");
+
+const stakingRoutes =
+    require("./stakingRoutes");
+
+const swapRoutes =
+    require("./swapRoutes");
+
+const bridgeRoutes =
+    require("./bridgeRoutes");
+
+// =========================================
+// EXPRESS APP
+// =========================================
+
+const app = express();
+
+// =========================================
+// MIDDLEWARES
 // =========================================
 
 app.use(cors());
@@ -46,384 +49,61 @@ app.use(express.json());
 // DATABASE
 // =========================================
 
-const db =
-    new sqlite3.Database(
-
-        "./corax.db",
-
-        err => {
-
-            if(err){
-
-                console.log(err);
-
-            } else {
-
-                console.log(
-                    "CORΛX Database Connected 💾"
-                );
-
-            }
-
-        }
-
-    );
+connectDatabase();
 
 // =========================================
-// CREATE TABLE
+// API ROUTES
 // =========================================
 
-db.run(`
+app.use("/api/auth", authRoutes);
 
-    CREATE TABLE IF NOT EXISTS users (
+app.use("/api/wallet", walletRoutes);
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+app.use("/api/staking", stakingRoutes);
 
-        email TEXT UNIQUE,
+app.use("/api/swap", swapRoutes);
 
-        password TEXT
-
-    )
-
-`);
+app.use("/api/bridge", bridgeRoutes);
 
 // =========================================
 // ROOT
 // =========================================
 
-app.get("/", (req,res) => {
+app.get("/", (req, res) => {
 
     res.json({
 
-        status:"online",
-
-        project:"CORΛX",
+        success: true,
 
         message:
-        "Money Without Borders"
+            "🟣 CORΛX Backend Online"
 
     });
 
 });
 
 // =========================================
-// REGISTER
+// HEALTH CHECK
 // =========================================
 
-app.post("/register", async (req,res) => {
+app.get("/health", (req, res) => {
 
-    try{
+    res.status(200).json({
 
-        const {
+        status: "OK",
 
-            email,
-            password
+        uptime: process.uptime()
 
-        } = req.body;
-
-        // ================================
-        // VALIDATION
-        // ================================
-
-        if(
-
-            !email
-            ||
-            !password
-
-        ){
-
-            return res.status(400).json({
-
-                success:false,
-
-                message:
-                "Missing fields"
-
-            });
-
-        }
-
-        // ================================
-        // HASH
-        // ================================
-
-        const hashedPassword =
-            await bcrypt.hash(
-                password,
-                10
-            );
-
-        // ================================
-        // INSERT
-        // ================================
-
-        db.run(
-
-            `
-
-            INSERT INTO users
-            (email,password)
-
-            VALUES (?,?)
-
-            `,
-
-            [
-
-                email,
-                hashedPassword
-
-            ],
-
-            function(err){
-
-                if(err){
-
-                    return res.status(400).json({
-
-                        success:false,
-
-                        message:
-                        "User already exists"
-
-                    });
-
-                }
-
-                return res.json({
-
-                    success:true,
-
-                    message:
-                    "Account created"
-
-                });
-
-            }
-
-        );
-
-    } catch(error){
-
-        console.log(error);
-
-        return res.status(500).json({
-
-            success:false,
-
-            message:
-            "Internal server error"
-
-        });
-
-    }
+    });
 
 });
 
 // =========================================
-// LOGIN
+// PORT
 // =========================================
 
-app.post("/login", (req,res) => {
-
-    const {
-
-        email,
-        password
-
-    } = req.body;
-
-    db.get(
-
-        `
-
-        SELECT *
-        FROM users
-
-        WHERE email = ?
-
-        `,
-
-        [email],
-
-        async (err,user) => {
-
-            if(err){
-
-                return res.status(500).json({
-
-                    message:
-                    "Database error"
-
-                });
-
-            }
-
-            if(!user){
-
-                return res.status(404).json({
-
-                    message:
-                    "User not found"
-
-                });
-
-            }
-
-            // ============================
-            // PASSWORD
-            // ============================
-
-            const validPassword =
-                await bcrypt.compare(
-
-                    password,
-                    user.password
-
-                );
-
-            if(!validPassword){
-
-                return res.status(401).json({
-
-                    message:
-                    "Invalid password"
-
-                });
-
-            }
-
-            // ============================
-            // TOKEN
-            // ============================
-
-            const token =
-                jwt.sign(
-
-                    {
-
-                        id:user.id,
-                        email:user.email
-
-                    },
-
-                    process.env.JWT_SECRET
-                    ||
-                    "corax_secret_key",
-
-                    {
-
-                        expiresIn:"7d"
-
-                    }
-
-                );
-
-            // ============================
-            // RESPONSE
-            // ============================
-
-            return res.json({
-
-                success:true,
-
-                token,
-
-                email:user.email
-
-            });
-
-        }
-
-    );
-
-});
-
-// =========================================
-// PROTECTED ROUTE
-// =========================================
-
-app.get(
-
-    "/profile",
-
-    authenticateToken,
-
-    (req,res) => {
-
-        res.json({
-
-            success:true,
-
-            user:req.user
-
-        });
-
-    }
-
-);
-
-// =========================================
-// AUTH MIDDLEWARE
-// =========================================
-
-function authenticateToken(
-
-    req,
-    res,
-    next
-
-){
-
-    const authHeader =
-        req.headers["authorization"];
-
-    const token =
-        authHeader &&
-        authHeader.split(" ")[1];
-
-    if(!token){
-
-        return res.status(401).json({
-
-            message:
-            "Access denied"
-
-        });
-
-    }
-
-    jwt.verify(
-
-        token,
-
-        process.env.JWT_SECRET
-        ||
-        "corax_secret_key",
-
-        (err,user) => {
-
-            if(err){
-
-                return res.status(403).json({
-
-                    message:
-                    "Invalid token"
-
-                });
-
-            }
-
-            req.user = user;
-
-            next();
-
-        }
-
-    );
-
-}
+const PORT =
+    process.env.PORT || 10000;
 
 // =========================================
 // START SERVER
@@ -433,7 +113,7 @@ app.listen(PORT, () => {
 
     console.log(
 
-        `CORΛX API Running On Port ${PORT} 🚀`
+        `🚀 CORΛX Server Running on Port ${PORT}`
 
     );
 
