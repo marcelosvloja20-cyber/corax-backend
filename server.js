@@ -1,54 +1,38 @@
-// =========================================
-// CORΛX BACKEND SERVER
-// Money Without Borders
-// =========================================
-
 const express = require("express");
+
 const cors = require("cors");
-const mongoose = require("mongoose");
+
 require("dotenv").config();
 
-// =========================================
+const connectDatabase = require("./database");
+
 // ROUTES
-// =========================================
 
 const authRoutes = require("./auth");
+
 const walletRoutes = require("./walletroutes");
+
 const swapRoutes = require("./swaproutes");
+
 const stakingRoutes = require("./stakingroutes");
+
 const bridgeRoutes = require("./bridgeroutes");
 
-// =========================================
-// APP CONFIG
-// =========================================
+// APP
 
 const app = express();
+
+// MIDDLEWARE
 
 app.use(cors());
 
 app.use(express.json());
 
-// =========================================
-// DATABASE CONNECTION
-// =========================================
+// DATABASE
 
-mongoose.connect(process.env.MONGO_URI)
+connectDatabase();
 
-.then(() => {
-
-    console.log("MongoDB Connected");
-
-})
-
-.catch((error) => {
-
-    console.log("MongoDB Error:", error);
-
-});
-
-// =========================================
-// API ROUTES
-// =========================================
+// ROUTES
 
 app.use("/api/auth", authRoutes);
 
@@ -60,15 +44,15 @@ app.use("/api/staking", stakingRoutes);
 
 app.use("/api/bridge", bridgeRoutes);
 
-// =========================================
-// ROOT ROUTE
-// =========================================
+// ROOT
 
 app.get("/", (req, res) => {
 
     res.json({
 
-        project: "CORΛX Backend",
+        success: true,
+
+        project: "CORΛX",
 
         status: "ONLINE",
 
@@ -78,14 +62,30 @@ app.get("/", (req, res) => {
 
 });
 
-// =========================================
-// SERVER START
-// =========================================
+// HEALTH
+
+app.get("/health", (req, res) => {
+
+    res.json({
+
+        status: "OK"
+
+    });
+
+});
+
+// PORT
 
 const PORT = process.env.PORT || 10000;
 
+// START SERVER
+
 app.listen(PORT, () => {
 
-    console.log(`CORΛX Server running on port ${PORT}`);
+    console.log(
 
-});
+        `CORΛX running on port ${PORT}`
+
+    );
+
+}); 
