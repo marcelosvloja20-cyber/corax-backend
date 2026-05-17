@@ -1,92 +1,16 @@
-// =========================================
-// CORΛX AUTH SYSTEM
-// JWT Authentication
-// =========================================
+const express = require("express");
 
-const jwt = require("jsonwebtoken");
+const router = express.Router();
 
-// =========================================
-// GENERATE TOKEN
-// =========================================
+router.get("/", (req, res) => {
 
-function generateToken(user) {
+    res.json({
 
-    return jwt.sign(
+        success: true,
+        message: "CORΛX Auth API Online"
 
-        {
-            id: user._id,
-            email: user.email
-        },
+    });
 
-        process.env.JWT_SECRET,
+});
 
-        {
-            expiresIn: "7d"
-        }
-
-    );
-
-}
-
-// =========================================
-// VERIFY TOKEN
-// =========================================
-
-function verifyToken(req, res, next) {
-
-    try {
-
-        const authHeader =
-            req.headers.authorization;
-
-        if (!authHeader) {
-
-            return res.status(401).json({
-
-                success: false,
-
-                message:
-                    "Access denied"
-
-            });
-
-        }
-
-        const token =
-            authHeader.split(" ")[1];
-
-        const decoded =
-            jwt.verify(
-                token,
-                process.env.JWT_SECRET
-            );
-
-        req.user = decoded;
-
-        next();
-
-    } catch (error) {
-
-        return res.status(401).json({
-
-            success: false,
-
-            message:
-                "Invalid token"
-
-        });
-
-    }
-
-}
-
-// =========================================
-// EXPORTS
-// =========================================
-
-module.exports = {
-
-    generateToken,
-    verifyToken
-
-};
+module.exports = router;
