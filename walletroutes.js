@@ -6,7 +6,8 @@ router.get("/", (req, res) => {
 
     res.json({
 
-        message: "CORΛX Wallet Route Online"
+        success: true,
+        message: "CORΛX Wallet API Online"
 
     });
 
