@@ -2,11 +2,19 @@ const express = require("express");
 
 const cors = require("cors");
 
-require("dotenv").config();
+const dotenv = require("dotenv");
 
-const connectDatabase = require("./database");
+const mongoose = require("mongoose");
 
-// ROUTES
+// =========================================
+// ENV CONFIG
+// =========================================
+
+dotenv.config();
+
+// =========================================
+// IMPORT ROUTES
+// =========================================
 
 const authRoutes = require("./auth");
 
@@ -18,21 +26,55 @@ const stakingRoutes = require("./stakingroutes");
 
 const bridgeRoutes = require("./bridgeroutes");
 
-// APP
+const userRoutes = require("./userRoutes");
+
+// =========================================
+// EXPRESS APP
+// =========================================
 
 const app = express();
 
-// MIDDLEWARE
+// =========================================
+// MIDDLEWARES
+// =========================================
 
 app.use(cors());
 
 app.use(express.json());
 
-// DATABASE
+// =========================================
+// DATABASE CONNECTION
+// =========================================
 
-connectDatabase();
+mongoose.connect(
 
-// ROUTES
+    process.env.MONGO_URI,
+
+    {}
+
+)
+
+.then(() => {
+
+    console.log("MongoDB Connected");
+
+})
+
+.catch((error) => {
+
+    console.log(
+
+        "MongoDB Connection Error:",
+
+        error.message
+
+    );
+
+});
+
+// =========================================
+// API ROUTES
+// =========================================
 
 app.use("/api/auth", authRoutes);
 
@@ -44,7 +86,11 @@ app.use("/api/staking", stakingRoutes);
 
 app.use("/api/bridge", bridgeRoutes);
 
-// ROOT
+app.use("/api/user", userRoutes);
+
+// =========================================
+// ROOT ROUTE
+// =========================================
 
 app.get("/", (req, res) => {
 
@@ -62,11 +108,15 @@ app.get("/", (req, res) => {
 
 });
 
-// HEALTH
+// =========================================
+// HEALTH CHECK
+// =========================================
 
 app.get("/health", (req, res) => {
 
-    res.json({
+    res.status(200).json({
+
+        success: true,
 
         status: "OK"
 
@@ -74,11 +124,15 @@ app.get("/health", (req, res) => {
 
 });
 
-// PORT
+// =========================================
+// SERVER CONFIG
+// =========================================
 
 const PORT = process.env.PORT || 10000;
 
+// =========================================
 // START SERVER
+// =========================================
 
 app.listen(PORT, () => {
 
@@ -88,4 +142,4 @@ app.listen(PORT, () => {
 
     );
 
-}); 
+});
