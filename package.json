@@ -1,7 +1,7 @@
 {
   "name": "corax-backend",
   "version": "1.0.0",
-  "description": "CORΛX Backend Infrastructure",
+  "description": "CORΛX Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
