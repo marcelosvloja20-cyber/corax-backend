@@ -1,22 +1,71 @@
-const verifyToken = (req, res, next) => {
+const jwt = require("jsonwebtoken");
 
-    try {
+// =========================================
+// VERIFY TOKEN
+// =========================================
 
-        next();
+const verifyToken = (
+
+  req,
+  res,
+  next
+
+) => {
+
+  try {
+
+    const authHeader =
+      req.headers.authorization;
+
+    // CHECK TOKEN
+
+    if (!authHeader) {
+
+      return res.status(401).json({
+
+        success: false,
+
+        message: "No token provided"
+
+      });
 
     }
 
-    catch (error) {
+    // REMOVE BEARER
 
-        return res.status(401).json({
+    const token =
+      authHeader.split(" ")[1];
 
-            success: false,
+    // VERIFY
 
-            message: "Authentication error"
+    const decoded =
+      jwt.verify(
 
-        });
+        token,
 
-    }
+        process.env.JWT_SECRET
+
+      );
+
+    // SAVE USER
+
+    req.user = decoded;
+
+    next();
+
+  }
+
+  catch (error) {
+
+    return res.status(401).json({
+
+      success: false,
+
+      message: "Invalid token"
+
+    });
+
+  }
 
 };
 
