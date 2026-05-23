@@ -1,35 +1,74 @@
 const express = require("express");
 
+const verifyToken = require("./middleware");
+
+const User = require("./userModel");
+
 const router = express.Router();
 
 // =========================================
-// GET USER PROFILE
+// GET CURRENT USER
 // =========================================
 
-router.get("/me", async (req, res) => {
+router.get(
 
-    res.status(200).json({
+  "/me",
+
+  verifyToken,
+
+  async (req, res) => {
+
+    try {
+
+      const user =
+        await User.findById(
+
+          req.user.id
+
+        ).select("-password");
+
+      // USER NOT FOUND
+
+      if (!user) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message: "User not found"
+
+        });
+
+      }
+
+      // RESPONSE
+
+      res.status(200).json({
 
         success: true,
 
-        user: {
+        user
 
-            username: "CORΛX User",
+      });
 
-            email: "user@corax.io",
+    }
 
-            balance: 0,
+    catch (error) {
 
-            stakingBalance: 0
+      console.log(error);
 
-        }
+      res.status(500).json({
 
-    });
+        success: false,
 
-});
+        message: "Server error"
 
-// =========================================
-// EXPORT
-// =========================================
+      });
+
+    }
+
+  }
+
+);
 
 module.exports = router;
