@@ -12,7 +12,7 @@ const cors = require("cors");
 
 const authRoutes = require("./auth");
 
-const userRoutes = require("./userroutes");
+const userRoutes = require("./userRoutes");
 
 const walletRoutes = require("./walletRoutes");
 
