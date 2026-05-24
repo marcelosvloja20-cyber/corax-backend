@@ -1,145 +1,90 @@
+require("dotenv").config();
+
 const express = require("express");
-
-const cors = require("cors");
-
-const dotenv = require("dotenv");
 
 const mongoose = require("mongoose");
 
-// =========================================
-// ENV CONFIG
-// =========================================
+const cors = require("cors");
 
-dotenv.config();
-
-// =========================================
-// IMPORT ROUTES
-// =========================================
+// =====================================
+// ROUTES
+// =====================================
 
 const authRoutes = require("./auth");
 
-const walletRoutes = require("./walletroutes");
+const userRoutes = require("./userroutes");
 
-const swapRoutes = require("./swaproutes");
+const walletRoutes = require("./walletRoutes");
 
-const stakingRoutes = require("./stakingroutes");
-
-const bridgeRoutes = require("./bridgeroutes");
-
-const userRoutes = require("./userRoutes");
-
-// =========================================
-// EXPRESS APP
-// =========================================
+// =====================================
 
 const app = express();
 
-// =========================================
-// MIDDLEWARES
-// =========================================
+// =====================================
+// MIDDLEWARE
+// =====================================
 
 app.use(cors());
 
 app.use(express.json());
 
-// =========================================
-// DATABASE CONNECTION
-// =========================================
+// =====================================
+// DATABASE
+// =====================================
 
-mongoose.connect(
-
-    process.env.MONGO_URI,
-
-    {}
-
-)
+mongoose.connect(process.env.MONGO_URI)
 
 .then(() => {
 
-    console.log("MongoDB Connected");
+  console.log("MongoDB connected");
 
 })
 
 .catch((error) => {
 
-    console.log(
-
-        "MongoDB Connection Error:",
-
-        error.message
-
-    );
+  console.log(error);
 
 });
 
-// =========================================
-// API ROUTES
-// =========================================
+// =====================================
+// ROUTES
+// =====================================
 
-app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
 
-app.use("/api/wallet", walletRoutes);
+app.use("/users", userRoutes);
 
-app.use("/api/swap", swapRoutes);
+app.use("/wallet", walletRoutes);
 
-app.use("/api/staking", stakingRoutes);
-
-app.use("/api/bridge", bridgeRoutes);
-
-app.use("/api/user", userRoutes);
-
-// =========================================
-// ROOT ROUTE
-// =========================================
+// =====================================
+// HOME
+// =====================================
 
 app.get("/", (req, res) => {
 
-    res.json({
+  res.json({
 
-        success: true,
+    success: true,
 
-        project: "CORΛX",
+    message: "CORΛX API Running"
 
-        status: "ONLINE",
-
-        message: "Money Without Borders"
-
-    });
+  });
 
 });
 
-// =========================================
-// HEALTH CHECK
-// =========================================
+// =====================================
+// SERVER
+// =====================================
 
-app.get("/health", (req, res) => {
-
-    res.status(200).json({
-
-        success: true,
-
-        status: "OK"
-
-    });
-
-});
-
-// =========================================
-// SERVER CONFIG
-// =========================================
-
-const PORT = process.env.PORT || 10000;
-
-// =========================================
-// START SERVER
-// =========================================
+const PORT =
+  process.env.PORT || 10000;
 
 app.listen(PORT, () => {
 
-    console.log(
+  console.log(
 
-        `CORΛX running on port ${PORT}`
+    `CORΛX running on port ${PORT}`
 
-    );
+  );
 
 });
